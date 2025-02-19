@@ -171,7 +171,7 @@ def main():
             reconstruction_errors = np.mean(np.abs(df_scaled.drop(columns=["Timestamp"], errors='ignore') - reconstructions), axis=1)
 
             # Determine the anomaly threshold and classify anomalies
-            threshold = np.percentile(reconstruction_errors, 90)
+            threshold = np.percentile(reconstruction_errors, 80)
             df["Anomaly"] = (reconstruction_errors > threshold).astype(int)
             
             # Display anomalies in the Streamlit app
