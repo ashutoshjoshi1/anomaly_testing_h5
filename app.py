@@ -6,6 +6,8 @@ from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow import keras
 import pickle
+from tensorflow.keras import models
+import joblib
 
 def process_txt_file(file):
     if hasattr(file, 'getvalue'):  # Streamlit UploadedFile
@@ -117,19 +119,40 @@ def main():
     
     if uploaded_file is not None:
         try:
-            model = keras.models.load_model("autoencoder_model.h5", compile=False)
-            model.compile(optimizer="adam", loss="mse")
+            # Load the pre-trained model with custom loss function
+            loaded_autoencoder = models.load_model(
+                'anomaly_model.h5', 
+                custom_objects={'mse': tf.keras.losses.MeanSquaredError()}
+            )
             
-            with open("scaler.pkl", "rb") as f:
-                scaler = pickle.load(f)
-                
-            if not isinstance(scaler, MinMaxScaler):
-                st.error("Loaded scaler is not a MinMaxScaler instance. Please check the scaler.pkl file.")
-                return
+            # Load the MinMaxScaler using joblib
+            scaler = joblib.load('scaler.pkl')
+            
+            # Process the uploaded file
+            df, df_numeric = process_txt_file(uploaded_file)
+            
+            # Ensure the Timestamp column is properly parsed
+            df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors='coerce')
+            
+            # Scale the numeric data
+            df_numeric = df.drop(columns=["Timestamp"], errors='ignore')
+            df_scaled = pd.DataFrame(scaler.transform(df_numeric), columns=df_numeric.columns)
+            df_scaled["Timestamp"] = df["Timestamp"].reset_index(drop=True)
+            
+            # Predict anomalies using the loaded model
+            reconstructions = loaded_autoencoder.predict(df_scaled.drop(columns=["Timestamp"], errors='ignore'))
+            reconstruction_errors = np.mean(np.abs(df_scaled.drop(columns=["Timestamp"], errors='ignore') - reconstructions), axis=1)
 
-            df, df_scaled = load_and_preprocess_data(uploaded_file, scaler)
-            df_scaled = test_anomaly_model(df_scaled, model)
-            plot_data(df, df_scaled)
+            # Determine the anomaly threshold and classify anomalies
+            threshold = np.percentile(reconstruction_errors, 99.9)
+            df["Anomaly"] = (reconstruction_errors > threshold).astype(int)
+            
+            # Display anomalies in the Streamlit app
+            anomalies = df[df["Anomaly"] == 1]
+            st.write("Anomalies Detected:", anomalies)
+
+            # Plotting the data with anomalies
+            plot_data(df, df)
 
         except Exception as e:
             st.error(f"Error loading model or scaler: {e}")
