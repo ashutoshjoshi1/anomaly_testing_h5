@@ -4,3 +4,4 @@ numpy
 plotly
 scikit-learn
 tensorflow  # or tensorflow-cpu if needed
+pickle
