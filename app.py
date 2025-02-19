@@ -160,7 +160,7 @@ def main():
             # Align columns with expected features
             df_numeric = df_numeric.reindex(columns=expected_features, fill_value=0)
             
-            st.sidebar.write(f"Aligned Columns:\n{df_numeric.columns.tolist()}")
+            # st.sidebar.write(f"Aligned Columns:\n{df_numeric.columns.tolist()}")
 
             # Scale the numeric data
             df_scaled = pd.DataFrame(scaler.transform(df_numeric), columns=df_numeric.columns)
