@@ -123,12 +123,17 @@ def main():
             with open("scaler.pkl", "rb") as f:
                 scaler = pickle.load(f)
                 
+            if not isinstance(scaler, MinMaxScaler):
+                st.error("Loaded scaler is not a MinMaxScaler instance. Please check the scaler.pkl file.")
+                return
+
             df, df_scaled = load_and_preprocess_data(uploaded_file, scaler)
             df_scaled = test_anomaly_model(df_scaled, model)
             plot_data(df, df_scaled)
 
         except Exception as e:
             st.error(f"Error loading model or scaler: {e}")
+
 
 
 if __name__ == "__main__":
