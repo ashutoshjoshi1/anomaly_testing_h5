@@ -117,7 +117,7 @@ def main():
     
     if uploaded_file is not None:
         try:
-            model = keras.models.load_model("anomaly_model.h5", compile=False)
+            model = keras.models.load_model("autoencoder_model.h5", compile=False)
             model.compile(optimizer="adam", loss="mse")
             
             with open("scaler.pkl", "rb") as f:
