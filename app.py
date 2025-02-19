@@ -147,15 +147,22 @@ def main():
             
             # Load the MinMaxScaler using joblib
             scaler = joblib.load('scaler.pkl')
-            
+
             # Process the uploaded file
             df, df_numeric = process_txt_file(uploaded_file)
             
             # Ensure the Timestamp column is properly parsed
             df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors='coerce')
             
+            # Retrieve expected feature names from the scaler
+            expected_features = scaler.feature_names_in_
+            
+            # Align columns with expected features
+            df_numeric = df_numeric.reindex(columns=expected_features, fill_value=0)
+            
+            st.sidebar.write(f"Aligned Columns:\n{df_numeric.columns.tolist()}")
+
             # Scale the numeric data
-            df_numeric = df.drop(columns=["Timestamp"], errors='ignore')
             df_scaled = pd.DataFrame(scaler.transform(df_numeric), columns=df_numeric.columns)
             df_scaled["Timestamp"] = df["Timestamp"].reset_index(drop=True)
             
@@ -176,6 +183,7 @@ def main():
 
         except Exception as e:
             st.error(f"Error loading model or scaler: {e}")
+
 
 
 
