@@ -15,6 +15,7 @@ def process_txt_file(file):
     else:
         raw_bytes = file.read()
 
+    # Attempt decoding with common encodings
     for encoding in ['utf-8', 'ISO-8859-1', 'utf-16', 'windows-1252']:
         try:
             content = raw_bytes.decode(encoding)
@@ -24,13 +25,29 @@ def process_txt_file(file):
     else:
         raise UnicodeDecodeError("Could not decode file using common encodings.")
 
+    # Split lines and find the start of data
     lines = content.splitlines()
-    
-    # Filter out metadata lines and keep only valid data rows
-    data = [
+
+    # Find the index of the second separator line
+    data_start_index = None
+    separator_count = 0
+
+    for i, line in enumerate(lines):
+        if line.startswith('---'):
+            separator_count += 1
+            if separator_count == 2:
+                data_start_index = i + 1
+                break
+
+    if data_start_index is None:
+        st.error("Data section not found in the uploaded file.")
+        return pd.DataFrame(), pd.DataFrame()
+
+    # Extract relevant data lines only
+    data_lines = [
         line.strip().split()[:24] 
-        for line in lines 
-        if line.strip() and not any(keyword in line for keyword in ["File", "Data", "Local", "Instrument", "#"])
+        for line in lines[data_start_index:] 
+        if line.strip() and not line.startswith('#')
     ]
     
     columns = [
@@ -41,7 +58,7 @@ def process_txt_file(file):
         "Head Sensor Humidity [%]", "Head Sensor Pressure [hPa]", "Scale Factor", "Uncertainty Indicator"
     ]
     
-    df = pd.DataFrame(data, columns=columns)
+    df = pd.DataFrame(data_lines, columns=columns)
     
     # Parse the Timestamp column safely
     df['Timestamp'] = pd.to_datetime(
@@ -52,15 +69,18 @@ def process_txt_file(file):
     # Remove rows with invalid timestamps
     df = df[df['Timestamp'].notnull()].reset_index(drop=True)
     
+    # Convert numeric columns properly
     numeric_columns = [col for col in df.columns if col not in ["Routine Code", "Timestamp"]]
     df[numeric_columns] = df[numeric_columns].apply(pd.to_numeric, errors='coerce')
 
     st.sidebar.write(f"After Conversion Column Types:\n{df.dtypes}")
     st.sidebar.write(f"First Few Rows of DataFrame:\n{df.head()}")
 
+    # Prepare the numeric DataFrame for scaling and model prediction
     df_numeric = df.drop(columns=["Routine Code", "Timestamp"], errors='ignore')
-    
+
     return df, df_numeric
+
 
 
 def load_and_preprocess_data(file, scaler):
