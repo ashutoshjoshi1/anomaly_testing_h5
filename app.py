@@ -73,8 +73,8 @@ def process_txt_file(file):
     numeric_columns = [col for col in df.columns if col not in ["Routine Code", "Timestamp"]]
     df[numeric_columns] = df[numeric_columns].apply(pd.to_numeric, errors='coerce')
 
-    st.sidebar.write(f"After Conversion Column Types:\n{df.dtypes}")
-    st.sidebar.write(f"First Few Rows of DataFrame:\n{df.head()}")
+    # st.sidebar.write(f"After Conversion Column Types:\n{df.dtypes}")
+    # st.sidebar.write(f"First Few Rows of DataFrame:\n{df.head()}")
 
     # Prepare the numeric DataFrame for scaling and model prediction
     df_numeric = df.drop(columns=["Routine Code", "Timestamp"], errors='ignore')
@@ -171,7 +171,7 @@ def main():
             reconstruction_errors = np.mean(np.abs(df_scaled.drop(columns=["Timestamp"], errors='ignore') - reconstructions), axis=1)
 
             # Determine the anomaly threshold and classify anomalies
-            threshold = np.percentile(reconstruction_errors, 99.9)
+            threshold = np.percentile(reconstruction_errors, 98)
             df["Anomaly"] = (reconstruction_errors > threshold).astype(int)
             
             # Display anomalies in the Streamlit app
