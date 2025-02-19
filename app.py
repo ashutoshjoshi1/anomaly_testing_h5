@@ -23,7 +23,13 @@ def process_txt_file(file):
         raise UnicodeDecodeError("Could not decode file using common encodings.")
 
     lines = content.splitlines()
-    data = [line.strip().split()[:24] for line in lines if line.strip() and not line.startswith('#')]
+    
+    # Filter out metadata lines and keep only valid data rows
+    data = [
+        line.strip().split()[:24] 
+        for line in lines 
+        if line.strip() and not any(keyword in line for keyword in ["File", "Data", "Local", "Instrument", "#"])
+    ]
     
     columns = [
         "Routine Code", "Timestamp", "Routine Count", "Repetition Count", "Duration", "Integration Time [ms]",
@@ -35,11 +41,15 @@ def process_txt_file(file):
     
     df = pd.DataFrame(data, columns=columns)
     
+    # Parse the Timestamp column safely
     df['Timestamp'] = pd.to_datetime(
         df['Timestamp'].str.replace("T", " ").str.replace("Z", ""), 
         errors='coerce'
     )
-
+    
+    # Remove rows with invalid timestamps
+    df = df[df['Timestamp'].notnull()].reset_index(drop=True)
+    
     numeric_columns = [col for col in df.columns if col not in ["Routine Code", "Timestamp"]]
     df[numeric_columns] = df[numeric_columns].apply(pd.to_numeric, errors='coerce')
 
@@ -49,6 +59,7 @@ def process_txt_file(file):
     df_numeric = df.drop(columns=["Routine Code", "Timestamp"], errors='ignore')
     
     return df, df_numeric
+
 
 def load_and_preprocess_data(file, scaler):
     df, df_n = process_txt_file(file)
